@@ -129,10 +129,21 @@ $(OUTPUT_DIR)/instructions.h: instructions.cc
 
 $(OUTPUT_DIR)/ptx_parser_decode.def: $(OUTPUT_DIR)/ptx.tab.c
 ifeq ($(shell uname),Linux)
-	cat $(OUTPUT_DIR)/ptx.tab.h | grep "=" | sed 's/^[ ]\+//' | sed 's/[=,]//g' | sed 's/\([_A-Z1-9]\+\)[ ]\+\([0-9]\+\)/\1 \1/' | sed 's/^/DEF(/' | sed 's/ /,"/' | sed 's/$$/")/' > $(OUTPUT_DIR)/ptx_parser_decode.def
+	cat $(OUTPUT_DIR)/ptx.tab.h | grep "=" | sed 's/^[ ]\+//' | sed -E 's/\s+\/\*.+\*\///' | sed 's/[=,]//g' | sed 's/\([_A-Z1-9]\+\)[ ]\+\([0-9]\+\)/\1 \1/' | sed 's/^/DEF(/' | sed 's/ /,"/' | sed 's/$$/")/' | sed '/YYerror/d;/YYEOF/d;/YYEMPTY/d;/YYUNDEF/d;' > $(OUTPUT_DIR)/ptx_parser_decode.def
+	@echo "Applying patch for newer version of Bison"
+	@python3 -c 'from pathlib import Path; p=Path("$(OUTPUT_DIR)/ptx_parser_decode.def"); s=p.read_text(); t=s.replace("/* \"end of file\"  */","/* \\\"end of file\\\"  */").replace("/* \"invalid token\"  */","/* \\\"invalid token\\\"  */").replace("/* \"memory exhausted\"  */","/* \\\"memory exhausted\\\"  */"); p.write_text(t) if t != s else None'
 else
-	cat $(OUTPUT_DIR)/ptx.tab.h | grep "=" | sed -E 's/^ +//' | sed 's/[=,]//g' | sed -E 's/([_A-Z1-9]+).*/\1 \1/' | sed 's/^/DEF(/' | sed 's/ /,"/' | sed 's/$$/")/' > $(OUTPUT_DIR)/ptx_parser_decode.def
+	cat $(OUTPUT_DIR)/ptx.tab.h | grep "=" | sed -E 's/^ +//' | sed -E 's/\s+\/\*.+\*\///' | sed 's/[=,]//g' | sed -E 's/([_A-Z1-9]+).*/\1 \1/' | sed 's/^/DEF(/' | sed 's/ /,"/' | sed 's/$$/")/' | sed '/YYerror/d;/YYEOF/d;/YYEMPTY/d;/YYUNDEF/d;' > $(OUTPUT_DIR)/ptx_parser_decode.def
+	@echo "Applying patch for newer version of Bison"
+	@python3 -c 'from pathlib import Path; p=Path("$(OUTPUT_DIR)/ptx_parser_decode.def"); s=p.read_text(); t=s.replace("/* \"end of file\"  */","/* \\\"end of file\\\"  */").replace("/* \"invalid token\"  */","/* \\\"invalid token\\\"  */").replace("/* \"memory exhausted\"  */","/* \\\"memory exhausted\\\"  */"); p.write_text(t) if t != s else None'
 endif
+
+# $(OUTPUT_DIR)/ptx_parser_decode.def: $(OUTPUT_DIR)/ptx.tab.c
+# ifeq ($(shell uname),Linux)
+# 	cat $(OUTPUT_DIR)/ptx.tab.h | grep "=" | sed 's/^[ ]\+//' | sed 's/[=,]//g' | sed 's/\([_A-Z1-9]\+\)[ ]\+\([0-9]\+\)/\1 \1/' | sed 's/^/DEF(/' | sed 's/ /,"/' | sed 's/$$/")/' > $(OUTPUT_DIR)/ptx_parser_decode.def
+# else
+# 	cat $(OUTPUT_DIR)/ptx.tab.h | grep "=" | sed -E 's/^ +//' | sed 's/[=,]//g' | sed -E 's/([_A-Z1-9]+).*/\1 \1/' | sed 's/^/DEF(/' | sed 's/ /,"/' | sed 's/$$/")/' > $(OUTPUT_DIR)/ptx_parser_decode.def
+# endif
 
 $(OUTPUT_DIR)/instructions.o: $(OUTPUT_DIR)/instructions.h $(OUTPUT_DIR)/ptx.tab.c
 $(OUTPUT_DIR)/cuda_device_printf.o: $(OUTPUT_DIR)/ptx.tab.c
