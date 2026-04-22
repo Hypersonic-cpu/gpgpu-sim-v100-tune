@@ -127,8 +127,11 @@ $(OUTPUT_DIR)/instructions.h: instructions.cc
 	@chmod -w $*.h
 	@echo "created $(OUTPUT_DIR)/instructions.h"
 
+# Newer bison emits quoted token comments and YY* pseudo-tokens in ptx.tab.h.
+# Filter that format here instead of pinning or downgrading the host bison.
 $(OUTPUT_DIR)/ptx_parser_decode.def: $(OUTPUT_DIR)/ptx.tab.c
 ifeq ($(shell uname),Linux)
+	@echo "\033[34mApplying patch for newer version of Bison\033[0m"
 	cat $(OUTPUT_DIR)/ptx.tab.h | grep "=" | sed 's/^[ ]\+//' | sed -E 's/\s+\/\*.+\*\///' | sed 's/[=,]//g' | sed 's/\([_A-Z1-9]\+\)[ ]\+\([0-9]\+\)/\1 \1/' | sed 's/^/DEF(/' | sed 's/ /,"/' | sed 's/$$/")/' | sed '/YYerror/d;/YYEOF/d;/YYEMPTY/d;/YYUNDEF/d;' > $(OUTPUT_DIR)/ptx_parser_decode.def
 	@echo "Applying patch for newer version of Bison"
 	@python3 -c 'from pathlib import Path; p=Path("$(OUTPUT_DIR)/ptx_parser_decode.def"); s=p.read_text(); t=s.replace("/* \"end of file\"  */","/* \\\"end of file\\\"  */").replace("/* \"invalid token\"  */","/* \\\"invalid token\\\"  */").replace("/* \"memory exhausted\"  */","/* \\\"memory exhausted\\\"  */"); p.write_text(t) if t != s else None'
